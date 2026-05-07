@@ -67,11 +67,11 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 // ─── Static Files (Frontend) ──────────────────────────────────────────────────
-app.use(express.static(path.join(__dirname, '../frontend')));
+app.use(express.static(path.join('../frontend')));
 
 // ─── Root Route — serve index.html ───────────────────────────────────────────
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/index.html'));
+  res.sendFile(path.join('../frontend/index.html'));
 });
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
