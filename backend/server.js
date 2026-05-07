@@ -4,11 +4,13 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const path = require('path');
 const rateLimit = require('express-rate-limit');
 const { testConnection } = require('./config/database');
 const { errorHandler, notFound } = require('./middleware/errorHandler');
 const Groq = require('groq-sdk');
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+
 // Route imports
 const codeRoutes = require('./routes/codeRoutes');
 const snippetRoutes = require('./routes/snippetRoutes');
@@ -65,7 +67,12 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 // ─── Static Files (Frontend) ──────────────────────────────────────────────────
-app.use(express.static('../frontend'));
+app.use(express.static(path.join(__dirname, '../frontend')));
+
+// ─── Root Route — serve index.html ───────────────────────────────────────────
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/index.html'));
+});
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
@@ -76,30 +83,32 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
-// ── AI Chat Assistant Route ──
+
+// ─── AI Chat Assistant Route ──────────────────────────────────────────────────
 app.post('/api/ai/chat', async (req, res) => {
   const { chatHistory } = req.body;
-  
+
   if (!chatHistory || chatHistory.length === 0) {
-    return res.status(400).json({ success: false, message: "No conversation history provided" });
+    return res.status(400).json({ success: false, message: 'No conversation history provided' });
   }
 
   try {
     const chatCompletion = await groq.chat.completions.create({
-      messages: chatHistory, // Passes the entire back-and-forth conversation
-      model: "llama-3.1-8b-instant", 
+      messages: chatHistory,
+      model: 'llama-3.1-8b-instant',
       temperature: 0.5,
     });
 
-    res.json({ 
-      success: true, 
-      reply: chatCompletion.choices[0].message // Returns the AI's specific reply message
+    res.json({
+      success: true,
+      reply: chatCompletion.choices[0].message,
     });
   } catch (error) {
-    console.error("Groq API Error:", error);
-    res.status(500).json({ success: false, message: "AI Assistant is currently unavailable." });
+    console.error('Groq API Error:', error);
+    res.status(500).json({ success: false, message: 'AI Assistant is currently unavailable.' });
   }
 });
+
 // ─── API Routes ───────────────────────────────────────────────────────────────
 app.use('/api/code', codeRoutes);
 app.use('/api/snippets', snippetRoutes);
@@ -110,7 +119,11 @@ app.use(errorHandler);
 
 // ─── Start Server ─────────────────────────────────────────────────────────────
 const startServer = async () => {
-  await testConnection();
+  // Non-blocking DB connection — server starts even if DB is temporarily unreachable
+  await testConnection().catch(err =>
+    console.warn('⚠️  DB connection warning:', err.message)
+  );
+
   app.listen(PORT, () => {
     console.log('\n╔══════════════════════════════════════════╗');
     console.log('║         CodeCraft API Server              ║');
