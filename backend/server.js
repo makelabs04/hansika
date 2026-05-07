@@ -66,12 +66,19 @@ if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('dev'));
 }
 
+// ─── Resolve Frontend Path ────────────────────────────────────────────────────
+// On shared hosting, Node may not run from the project root.
+// FRONTEND_PATH in .env lets you set the absolute path explicitly.
+// Falls back to the standard relative path for local dev.
+const frontendPath = process.env.FRONTEND_PATH || path.join(__dirname, '../frontend');
+console.log('Frontend path resolved to:', frontendPath);
+
 // ─── Static Files (Frontend) ──────────────────────────────────────────────────
-app.use(express.static(path.join(__dirname, '../frontend')));
+app.use(express.static(frontendPath));
 
 // ─── Root Route — serve index.html ───────────────────────────────────────────
 app.get('/', (req, res) => {
- res.sendFile(path.join(__dirname, '../frontend/index.html'));
+  res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
