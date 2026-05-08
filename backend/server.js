@@ -1,4 +1,4 @@
-// backend/server.js
+// server.js
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -26,7 +26,7 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').concat([
   'http://localhost:3000',
   'http://127.0.0.1:5500',
   'http://localhost:5500',
-  'null', // file:// protocol
+  'null',
 ]);
 
 app.use(cors({
@@ -34,7 +34,7 @@ app.use(cors({
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(null, true); // Allow all in dev — restrict in production
+      callback(null, true); // Allow all — restrict in production if needed
     }
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -49,8 +49,8 @@ const limiter = rateLimit({
 });
 
 const codeLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 20,             // max 20 runs per minute
+  windowMs: 60 * 1000,
+  max: 20,
   message: { success: false, message: 'Too many code executions. Please wait.' },
 });
 
@@ -66,19 +66,14 @@ if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('dev'));
 }
 
-// ─── Resolve Frontend Path ────────────────────────────────────────────────────
-// On shared hosting, Node may not run from the project root.
-// FRONTEND_PATH in .env lets you set the absolute path explicitly.
-// Falls back to the standard relative path for local dev.
-const frontendPath = process.env.FRONTEND_PATH || path.join(__dirname, '../frontend');
-console.log('Frontend path resolved to:', frontendPath);
-
 // ─── Static Files (Frontend) ──────────────────────────────────────────────────
-app.use(express.static(frontendPath));
+// Since frontend files are in the SAME folder as server.js on this host,
+// serve from __dirname directly.
+app.use(express.static(__dirname));
 
 // ─── Root Route — serve index.html ───────────────────────────────────────────
 app.get('/', (req, res) => {
-  res.sendFile(path.join(frontendPath, 'index.html'));
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
@@ -126,7 +121,7 @@ app.use(errorHandler);
 
 // ─── Start Server ─────────────────────────────────────────────────────────────
 const startServer = async () => {
-  // Non-blocking DB connection — server starts even if DB is temporarily unreachable
+  // Non-blocking — server starts even if DB is temporarily unreachable
   await testConnection().catch(err =>
     console.warn('⚠️  DB connection warning:', err.message)
   );
